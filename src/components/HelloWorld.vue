@@ -1,31 +1,65 @@
 <template>
-  <div>
-    <div>
-      <input @change="onChangeFile" multiple type="file" id="upload" />
-    </div>
-    <div
-      class="CanvasFrame"
-      :style="computedCanvasFrameStyle"
-      @click="onClickOnCanvas"
-    >
+  <div class="page">
+    <div class="side">
       <div>
-        <canvas ref="root" id="canvas"></canvas>
-        <canvas
-          ref="draw"
-          class="CanvasDraw"
-          :width="computedDrawWidth"
-          :height="computedDrawHeight"
-        ></canvas>
+        <input @change="onChangeFile" multiple type="file" id="upload" />
       </div>
+      <ul class="fileList">
+        <li v-for="(file, index) in state.files" :key="index">
+          <button @click="onSelectFile(index)">
+            {{ file.name }}
+          </button>
+        </li>
+      </ul>
     </div>
-    <div>
-      <textarea ref="rectValue" cols="50" rows="2"></textarea>
-      <a :href="hrefTxt" target="_blank" :download="fileNameTxt">DL</a>
+    <div class="main">
+      <div
+        class="CanvasFrame"
+        :style="computedCanvasFrameStyle"
+        @click="onClickOnCanvas"
+      >
+        <div>
+          <canvas ref="root" id="canvas"></canvas>
+          <canvas
+            ref="draw"
+            class="CanvasDraw"
+            :width="computedDrawWidth"
+            :height="computedDrawHeight"
+          ></canvas>
+        </div>
+      </div>
+      <div>
+        <textarea ref="rectValue" cols="50" rows="2"></textarea>
+        <a :href="hrefTxt" target="_blank" :download="fileNameTxt">DL</a>
+      </div>
     </div>
   </div>
 </template>
 <script>
 import { ref, computed, reactive } from "vue";
+
+const FormatImageProperty = {
+  name: null,
+  path: null,
+  image: null,
+  width: null,
+  height: null,
+  area: {
+    top: null,
+    left: null,
+    width: null,
+    height: null,
+  },
+  normarized: {
+    top: null,
+    left: null,
+    right: null,
+    bottom: null,
+    width: null,
+    height: null,
+  },
+};
+
 export default {
   name: "HelloWorld",
 
@@ -38,6 +72,7 @@ export default {
     const rectValue = ref(null);
 
     const state = reactive({
+      files: [],
       practiveData: "",
       // クリックエリア
       isClickRect: {
@@ -47,27 +82,7 @@ export default {
         height: null,
       },
       //画像データ
-      imageProperty: {
-        name: null,
-        path: null,
-        image: null,
-        width: null,
-        height: null,
-        area: {
-          top: null,
-          left: null,
-          width: null,
-          height: null,
-        },
-        normarized: {
-          top: null,
-          left: null,
-          right: null,
-          bottom: null,
-          width: null,
-          height: null,
-        },
-      },
+      imageProperty: { ...FormatImageProperty },
     });
 
     // キャンバスフレームのスタイル
@@ -139,25 +154,65 @@ export default {
       }
     };
 
+    /**
+     * ファイル一覧を追加
+     */
+    const setFiles = (files) => {
+      if (files && files.length) {
+        let _files = [];
+        for (let i = 0; i < files.length; i++) {
+          const format = { ...FormatImageProperty };
+          format.name = files[i].name;
+          format.path = URL.createObjectURL(files[i]);
+          _files.push(format);
+        }
+        state.files = _files;
+        console.log("==files", state.files);
+      }
+    };
+
+    // リストからファイルを選択
+    const onSelectFile = (index) => {
+      // キャンバスをクリア
+      ClearCanvas();
+
+      const file = { ...state.files[index] };
+      console.log(file);
+
+      // 画像情報更新
+      state.imageProperty = file;
+
+      // 画像ロード
+      LoadImage({
+        callback: () => {
+          // キャンバスに描画
+          DrawImageOnCanvas();
+        },
+      });
+    };
+
     // ファイル変更
     const onChangeFile = (evt) => {
       if (evt.target.files.length) {
-        // ファイルパスを取得
-        const url = URL.createObjectURL(evt.target.files[0]);
+        // ファイル一覧
+        setFiles(evt.target.files);
 
-        // 画像情報更新
-        const _imageProperty = { ...state.imageProperty };
-        _imageProperty.name = evt.target.files[0].name;
-        _imageProperty.path = url;
-        state.imageProperty = _imageProperty;
+        // // ファイルパスを取得
+        // const url = URL.createObjectURL(evt.target.files[0]);
 
-        // 画像ロード
-        LoadImage({
-          callback: () => {
-            // キャンバスに描画
-            DrawImageOnCanvas();
-          },
-        });
+        // // 画像情報更新
+        // const _imageProperty = { ...state.imageProperty };
+        // _imageProperty.name = evt.target.files[0].name;
+        // _imageProperty.path = url;
+        // state.imageProperty = _imageProperty;
+
+        // // 画像ロード
+        // LoadImage({
+        //   callback: () => {
+        //     // キャンバスに描画
+        //     DrawImageOnCanvas();
+        //   },
+        // });
       }
     };
 
@@ -204,7 +259,13 @@ export default {
       ctx.stroke();
     };
 
-    //
+    // キャンバスをクリア
+    const ClearCanvas = () => {
+      const ctx = root.value.getContext("2d");
+      const rect = root.value.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+    };
+
     // [oject-class] [x_center] [y_center] [width] [height]
     const PutNormalizedData = () => {
       const _imageProperty = { ...state.imageProperty };
@@ -220,6 +281,7 @@ export default {
     };
 
     return {
+      state,
       root,
       draw,
       rectValue,
@@ -230,6 +292,7 @@ export default {
       computedDrawHeight,
       onChangeFile,
       onClickOnCanvas,
+      onSelectFile,
     };
   },
 };
@@ -237,12 +300,48 @@ export default {
 <style scoped>
 .CanvasFrame {
   position: relative;
-  border: 1px solid red;
+  border: 1px solid #eee;
 }
 .CanvasDraw {
   position: absolute;
   left: 0;
   top: 0;
-  border: 1px solid blue;
+}
+
+.page {
+  display: flex;
+  height: 100%;
+}
+
+.side {
+  width: 200px;
+  height: 100%;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.main {
+  flex: 1;
+}
+.fileList {
+  padding: 0;
+  margin: 0;
+}
+
+.fileList li {
+  height: 32px;
+  line-height: 32px;
+  font-size: 16px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileList li button {
+  border: none;
+  border-bottom: 1px solid #efefef;
+  width: 100%;
+  height: 32px;
+  text-align: left;
 }
 </style>
