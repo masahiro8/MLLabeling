@@ -6,7 +6,10 @@
       </div>
       <ul class="fileList">
         <li v-for="(file, index) in state.files" :key="index">
-          <button @click="onSelectFile(index)">
+          <button
+            @click="onSelectFile(index)"
+            :class="isSelectedIndex(index) ? 'selected' : ''"
+          >
             {{ file.name }}
           </button>
         </li>
@@ -72,6 +75,7 @@ export default {
     const rectValue = ref(null);
 
     const state = reactive({
+      selectedIndex: null,
       files: [],
       practiveData: "",
       // クリックエリア
@@ -173,11 +177,13 @@ export default {
 
     // リストからファイルを選択
     const onSelectFile = (index) => {
+      //index取得
+      state.selectedIndex = index;
+
       // キャンバスをクリア
       ClearCanvas();
 
       const file = { ...state.files[index] };
-      console.log(file);
 
       // 画像情報更新
       state.imageProperty = file;
@@ -191,31 +197,19 @@ export default {
       });
     };
 
+    const isSelectedIndex = (index) => {
+      return state.selectedIndex === index;
+    };
+
     // ファイル変更
     const onChangeFile = (evt) => {
       if (evt.target.files.length) {
         // ファイル一覧
         setFiles(evt.target.files);
-
-        // // ファイルパスを取得
-        // const url = URL.createObjectURL(evt.target.files[0]);
-
-        // // 画像情報更新
-        // const _imageProperty = { ...state.imageProperty };
-        // _imageProperty.name = evt.target.files[0].name;
-        // _imageProperty.path = url;
-        // state.imageProperty = _imageProperty;
-
-        // // 画像ロード
-        // LoadImage({
-        //   callback: () => {
-        //     // キャンバスに描画
-        //     DrawImageOnCanvas();
-        //   },
-        // });
       }
     };
 
+    // 画像をロード
     const LoadImage = ({ callback }) => {
       const imagePath = state.imageProperty.path;
       const image = new Image();
@@ -293,6 +287,7 @@ export default {
       onChangeFile,
       onClickOnCanvas,
       onSelectFile,
+      isSelectedIndex,
     };
   },
 };
@@ -335,13 +330,25 @@ export default {
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #efefef;
+}
+
+.fileList li input[type="checkbox"] {
+  padding: 2px;
+  margin: 2px;
 }
 
 .fileList li button {
   border: none;
-  border-bottom: 1px solid #efefef;
+  background: none;
   width: 100%;
   height: 32px;
   text-align: left;
+}
+
+.fileList li button.selected {
+  background-color: #efefef;
 }
 </style>
